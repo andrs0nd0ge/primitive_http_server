@@ -10,22 +10,22 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class Main {
-    static String UTIL_FOLDER = "src/util";
-    static String BG_FOLDER = UTIL_FOLDER + "/bg";
-    static String IMAGES_FOLDER = UTIL_FOLDER + "/images";
-    static String CSS_FOLDER = UTIL_FOLDER + "/css";
     static String HTML_FILE_NAME = "index.html";
     static String CSS_FILE_NAME = "forms.css";
     static String BG_FILE_NAME = "bg.png";
     static String PICTURE_FILE_NAME = "1.jpg";
-    static String CONTENT_TYPE = "Content-Type";
+    static String UTIL_FOLDER = "src/util";
+    static String BG_FOLDER = UTIL_FOLDER + "/bg";
+    static String IMAGES_FOLDER = UTIL_FOLDER + "/images";
+    static String CSS_FOLDER = UTIL_FOLDER + "/css";
     static Path HTML_FULL_PATH = Path.of(String.format("%s/%s", UTIL_FOLDER, HTML_FILE_NAME));
     static Path CSS_FULL_PATH = Path.of(String.format("%s/%s", CSS_FOLDER, CSS_FILE_NAME));
     static Path BG_FULL_PATH = Path.of(String.format("%s/%s", BG_FOLDER, BG_FILE_NAME));
     static Path PICTURE_FULL_PATH = Path.of(String.format("%s/%s", IMAGES_FOLDER, PICTURE_FILE_NAME));
+    static String CONTENT_TYPE = "Content-Type";
     static String JPEG = "image/jpeg";
     static String PNG = "image/png";
-    static String HTML = "text/html";
+    static String HTML = "text/html, charset=utf-8;";
     static String CSS = "text/css";
     static String LOCALHOST = "localhost";
 
@@ -52,11 +52,12 @@ public class Main {
         server.createContext(String.format("/css/%s", CSS_FILE_NAME), Main::cssHandler);
         server.createContext(String.format("/images/%s", PICTURE_FILE_NAME), Main::picHandler);
         server.createContext(String.format("/bg/%s", BG_FILE_NAME), Main::bgHandler);
-        server.createContext("/apps", Main::handleRequest);
-        server.createContext("/apps/profile", Main::handleRequest);
+        server.createContext("/", Main::handleRequest);
+        server.createContext("/apps", Main::handleAppsRequest);
+        server.createContext("/apps/profile", Main::handleProfileRequest);
     }
 
-    private static void operateHeaders(HttpExchange exchange, String mimeType) {
+    private static void operateTheHeaders(HttpExchange exchange, String mimeType) {
         try {
             exchange.getResponseHeaders().add(CONTENT_TYPE, mimeType);
             int response = 200;
@@ -67,9 +68,11 @@ public class Main {
         }
     }
 
-    private static void executeWriter(HttpExchange exchange, Path path) throws IOException {
-        try(Writer writer = getWriter(exchange, path)) {
+    private static void executeWriter(HttpExchange exchange, Path path) {
+        try (Writer writer = getWriter(exchange, path)) {
             writer.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -83,23 +86,23 @@ public class Main {
         return new PrintWriter(output, false);
     }
 
-    private static void htmlHandler(HttpExchange exchange) throws IOException {
-        operateHeaders(exchange, HTML);
+    private static void htmlHandler(HttpExchange exchange) {
+        operateTheHeaders(exchange, HTML);
         executeWriter(exchange, HTML_FULL_PATH);
     }
 
-    private static void bgHandler(HttpExchange exchange) throws IOException {
-        operateHeaders(exchange, PNG);
+    private static void bgHandler(HttpExchange exchange) {
+        operateTheHeaders(exchange, PNG);
         executeWriter(exchange, BG_FULL_PATH);
     }
 
-    private static void picHandler(HttpExchange exchange) throws IOException {
-        operateHeaders(exchange, JPEG);
+    private static void picHandler(HttpExchange exchange) {
+        operateTheHeaders(exchange, JPEG);
         executeWriter(exchange, PICTURE_FULL_PATH);
     }
 
-    private static void cssHandler(HttpExchange exchange) throws IOException {
-        operateHeaders(exchange, CSS);
+    private static void cssHandler(HttpExchange exchange) {
+        operateTheHeaders(exchange, CSS);
         executeWriter(exchange, CSS_FULL_PATH);
     }
 
@@ -118,6 +121,41 @@ public class Main {
                 write(writer, "Processed via", ctxPath);
                 writeHeaders(writer, exchange.getRequestHeaders());
                 writeData(writer, exchange);
+                writer.flush();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    private static void handleProfileRequest(HttpExchange exchange) {
+        try {
+            exchange.getResponseHeaders().add(CONTENT_TYPE, HTML);
+            exchange.sendResponseHeaders(200, 0);
+            try (Writer writer = getWriterFrom(exchange)) {
+                String host = exchange.getLocalAddress().getHostName();
+                String protocol = exchange.getProtocol();
+                int port = exchange.getLocalAddress().getPort();
+                write(writer, "Host", host);
+                write(writer, "Protocol used", protocol);
+                write(writer, "Port", String.valueOf(port));
+                writer.flush();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    private static void handleAppsRequest(HttpExchange exchange) {
+        try {
+            exchange.getResponseHeaders().add(CONTENT_TYPE, "text/cmd, charset=utf-8;");
+            exchange.sendResponseHeaders(200, 0);
+            try (Writer writer = getWriterFrom(exchange)) {
+                String uri = exchange.getRequestURI().toString();
+                int hashCode = exchange.hashCode();
+                int responseCode = exchange.getResponseCode();
+                write(writer, "URI link", uri);
+                write(writer, "Hashcode", String.valueOf(hashCode));
+                write(writer, "Response Code", String.valueOf(responseCode));
+                writeHeaders(writer, exchange.getRequestHeaders());
                 writer.flush();
             }
         } catch (IOException e) {
