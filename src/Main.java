@@ -25,7 +25,7 @@ public class Main {
     static String CONTENT_TYPE = "Content-Type";
     static String JPEG = "image/jpeg";
     static String PNG = "image/png";
-    static String HTML = "text/html, charset=utf-8;";
+    static String HTML = "text/html, charset=utf-8";
     static String CSS = "text/css";
     static String LOCALHOST = "localhost";
 
@@ -57,12 +57,14 @@ public class Main {
         server.createContext("/apps/profile", Main::handleProfileRequest);
     }
 
-    private static void operateTheHeaders(HttpExchange exchange, String mimeType) {
+    private static void operateTheHeaders(HttpExchange exchange, Path path, String mimeType) {
         try {
             exchange.getResponseHeaders().add(CONTENT_TYPE, mimeType);
-            int response = 200;
-            int length = 0;
-            exchange.sendResponseHeaders(response, length);
+            if (Files.notExists(path)) {
+                exchange.sendResponseHeaders(404, 0);
+            }
+            exchange.sendResponseHeaders(200, 0);
+            executeWriter(exchange, path);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -77,9 +79,6 @@ public class Main {
     }
 
     private static Writer getWriter(HttpExchange exchange, Path path) throws IOException {
-        if (Files.notExists(path)) {
-            throw new IOException();
-        }
         byte[] byteArray = Files.readAllBytes(path);
         OutputStream output = exchange.getResponseBody();
         output.write(byteArray);
@@ -87,23 +86,19 @@ public class Main {
     }
 
     private static void htmlHandler(HttpExchange exchange) {
-        operateTheHeaders(exchange, HTML);
-        executeWriter(exchange, HTML_FULL_PATH);
+        operateTheHeaders(exchange, HTML_FULL_PATH, HTML);
     }
 
     private static void bgHandler(HttpExchange exchange) {
-        operateTheHeaders(exchange, PNG);
-        executeWriter(exchange, BG_FULL_PATH);
+        operateTheHeaders(exchange, BG_FULL_PATH, PNG);
     }
 
     private static void picHandler(HttpExchange exchange) {
-        operateTheHeaders(exchange, JPEG);
-        executeWriter(exchange, PICTURE_FULL_PATH);
+        operateTheHeaders(exchange, PICTURE_FULL_PATH, JPEG);
     }
 
     private static void cssHandler(HttpExchange exchange) {
-        operateTheHeaders(exchange, CSS);
-        executeWriter(exchange, CSS_FULL_PATH);
+        operateTheHeaders(exchange, CSS_FULL_PATH, CSS);
     }
 
     private static void handleRequest(HttpExchange exchange) {
@@ -127,6 +122,7 @@ public class Main {
             e.printStackTrace();
         }
     }
+
     private static void handleProfileRequest(HttpExchange exchange) {
         try {
             exchange.getResponseHeaders().add(CONTENT_TYPE, HTML);
@@ -144,6 +140,7 @@ public class Main {
             e.printStackTrace();
         }
     }
+
     private static void handleAppsRequest(HttpExchange exchange) {
         try {
             exchange.getResponseHeaders().add(CONTENT_TYPE, "text/cmd, charset=utf-8;");
